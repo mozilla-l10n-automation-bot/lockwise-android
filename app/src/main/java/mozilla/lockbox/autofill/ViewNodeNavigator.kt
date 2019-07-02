@@ -3,8 +3,11 @@ package mozilla.lockbox.autofill
 import android.app.assist.AssistStructure
 import android.app.assist.AssistStructure.ViewNode
 import android.os.Build
+import android.view.View
+import android.view.View.INVISIBLE
 import android.view.autofill.AutofillId
 import androidx.annotation.RequiresApi
+import androidx.transition.Visibility
 
 interface AutofillNodeNavigator<T, U> {
     val rootNodes: List<T>
@@ -14,6 +17,7 @@ interface AutofillNodeNavigator<T, U> {
     fun autofillId(node: T): U?
     fun isEditText(node: T): Boolean
     fun isHtmlInputField(node: T): Boolean
+    fun isHiddenField(node: T): Boolean
     fun packageName(node: T): String?
     fun webDomain(node: T): String?
     fun build(
@@ -62,6 +66,12 @@ class ViewNodeNavigator(
 
     override fun isHtmlInputField(node: ViewNode): Boolean {
         return node.htmlInfo?.tag?.toLowerCase() == "input"
+    }
+
+    override fun isHiddenField(node: ViewNode): Boolean {
+        return node.visibility == INVISIBLE ||
+            node.visibility == View.GONE ||
+            node.htmlInfo?.attributes?.find { x -> x.first == "disabled" && x.second == "true"} != null
     }
 
     override fun packageName(node: ViewNode): String? = node.idPackage

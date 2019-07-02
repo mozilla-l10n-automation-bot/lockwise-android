@@ -93,13 +93,15 @@ class ParsedStructureBuilder<ViewNode, AutofillId>(
     private fun isAutoFillableEditText(node: ViewNode, keywords: Collection<String>): Boolean {
         return navigator.isEditText(node) &&
             containsKeywords(node, keywords) &&
-            navigator.autofillId(node) != null
+            navigator.autofillId(node) != null &&
+            !navigator.isHiddenField(node)
     }
 
     private fun isAutoFillableInputField(node: ViewNode, keywords: Collection<String>): Boolean {
         return navigator.isHtmlInputField(node) &&
             containsKeywords(node, keywords) &&
-            navigator.autofillId(node) != null
+            navigator.autofillId(node) != null &&
+            !navigator.isHiddenField(node)
     }
 
     private fun <T> findFirst(transform: (ViewNode) -> T?): T? {
