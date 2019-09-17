@@ -282,7 +282,7 @@ class EditItemFragment : BackableFragment(), EditItemDetailView {
                     R.id.inputLayoutUsername -> {
                         when {
                             TextUtils.isEmpty(inputText) -> {
-                                errorLayout.helperText = context?.getString(R.string.hint_username)
+                                errorLayout.error = null
                             }
                         }
                     }
