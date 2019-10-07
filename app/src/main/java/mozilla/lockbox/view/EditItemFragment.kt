@@ -16,6 +16,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.webkit.URLUtil
 import android.widget.TextView
@@ -24,6 +25,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.jakewharton.rxbinding2.support.v7.widget.navigationClicks
 import com.jakewharton.rxbinding2.view.clicks
+import com.jakewharton.rxbinding2.widget.color
 import com.jakewharton.rxbinding2.widget.textChanges
 import com.jakewharton.rxrelay2.BehaviorRelay
 import io.reactivex.Observable
@@ -78,6 +80,7 @@ class EditItemFragment : BackableFragment(), EditItemDetailView {
         }
 
         presenter = EditItemPresenter(this, itemId)
+        activity?.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN)
         return inflater.inflate(R.layout.fragment_item_edit, container, false)
     }
 
@@ -167,24 +170,54 @@ class EditItemFragment : BackableFragment(), EditItemDetailView {
                         errorLayout.error = null
                     }
                 }
+
+                if(hostnameInvalid || passwordInvalid) {
+                    disableSave()
+                } else {
+                    enableSave()
+                }
             }
         }
     }
 
-    private fun handlePasswordChanges(errorLayout: TextInputLayout, inputText: String?) {
-        // password cannot be empty
+    private var hostnameInvalid = false
+    private var passwordInvalid = false
+
+    private fun disableSave() {
+        saveEntryButton.compoundDrawableTintList = context?.getColorStateList(R.color.button_disabled)
+        saveEntryButton.isClickable = false
+        saveEntryButton.isFocusable = false
+    }
+
+    private fun enableSave() {
+        saveEntryButton.compoundDrawableTintList = context?.getColorStateList(R.color.background_white)
+        saveEntryButton.isClickable = true
+        saveEntryButton.isFocusable = true
+    }
+
+    private fun handleHostnameChanges(errorLayout: TextInputLayout, inputText: String?) {
+        // hostname cannot be empty
+        // has to have http:// or https://
         when {
             TextUtils.isEmpty(inputText) -> {
                 errorLayout.setErrorTextColor(context?.getColorStateList(R.color.error_input_text))
-                errorLayout.error =
-                    context?.getString(R.string.password_invalid_text)
+                errorLayout.error = context?.getString(R.string.hostname_empty_text)
                 errorLayout.setErrorIconDrawable(R.drawable.ic_error)
-                view?.btnPasswordToggle?.visibility = View.INVISIBLE
+                view?.inputHostnameDescription?.visibility = View.INVISIBLE
+                hostnameInvalid = true
+            }
+            !URLUtil.isHttpUrl(inputText) and !URLUtil.isHttpsUrl(inputText) -> {
+                errorLayout.setErrorTextColor(context?.getColorStateList(R.color.error_input_text))
+                errorLayout.error = context?.getString(R.string.hostname_invalid_text)
+                errorLayout.setErrorIconDrawable(R.drawable.ic_error)
+                view?.inputHostnameDescription?.visibility = View.INVISIBLE
+                hostnameInvalid = true
             }
             else -> {
                 errorLayout.error = null
                 errorLayout.errorIconDrawable = null
-                view?.btnPasswordToggle?.visibility = View.VISIBLE
+                view?.inputHostnameDescription?.visibility = View.VISIBLE
+                hostnameInvalid = false
             }
         }
     }
@@ -197,118 +230,21 @@ class EditItemFragment : BackableFragment(), EditItemDetailView {
         }
     }
 
-    private fun handleHostnameChanges(errorLayout: TextInputLayout, inputText: String?) {
-        // hostname cannot be empty
-        // has to have http:// or https://
+    private fun handlePasswordChanges(errorLayout: TextInputLayout, inputText: String?) {
         when {
             TextUtils.isEmpty(inputText) -> {
                 errorLayout.setErrorTextColor(context?.getColorStateList(R.color.error_input_text))
                 errorLayout.error =
-                    context?.getString(R.string.hostname_empty_text)
+                    context?.getString(R.string.password_invalid_text)
                 errorLayout.setErrorIconDrawable(R.drawable.ic_error)
-                view?.inputHostnameDescription?.visibility = View.INVISIBLE
-            }
-            !URLUtil.isHttpUrl(inputText) and !URLUtil.isHttpsUrl(inputText) -> {
-                errorLayout.setErrorTextColor(context?.getColorStateList(R.color.error_input_text))
-                errorLayout.error =
-                    context?.getString(R.string.hostname_invalid_text)
-                errorLayout.setErrorIconDrawable(R.drawable.ic_error)
-                view?.inputHostnameDescription?.visibility = View.INVISIBLE
+                view?.btnPasswordToggle?.visibility = View.INVISIBLE
+                passwordInvalid = true
             }
             else -> {
                 errorLayout.error = null
                 errorLayout.errorIconDrawable = null
-                view?.inputHostnameDescription?.visibility = View.VISIBLE
-            }
-        }
-    }
-
-    private fun setTextWatcher(view: View) {
-        view.inputHostname.addTextChangedListener(
-            buildTextWatcher(
-                view.inputLayoutHostname
-            )
-        )
-        view.inputUsername.addTextChangedListener(
-            buildTextWatcher(
-                view.inputLayoutUsername
-            )
-        )
-        view.inputPassword.addTextChangedListener(
-            buildTextWatcher(
-                view.inputLayoutPassword
-            )
-        )
-    }
-
-    private fun buildTextWatcher(errorLayout: TextInputLayout): TextWatcher {
-        return object : TextWatcher {
-            override fun beforeTextChanged(
-                charSequence: CharSequence,
-                start: Int,
-                count: Int,
-                after: Int
-            ) {
-            }
-
-            override fun onTextChanged(
-                charSequence: CharSequence,
-                start: Int,
-                before: Int,
-                count: Int
-            ) {
-            }
-
-            override fun afterTextChanged(editable: Editable) {
-                val inputText: String? = errorLayout.editText?.text.toString()
-
-                when (errorLayout.id) {
-                    R.id.inputLayoutHostname -> {
-                        // hostname cannot be null
-                        // has to have http:// or https://
-                        when {
-                            TextUtils.isEmpty(inputText)
-                                || (!URLUtil.isHttpUrl(inputText) and !URLUtil.isHttpsUrl(inputText))
-                            -> {
-                                errorLayout.setErrorTextColor(context?.getColorStateList(R.color.error_input_text))
-                                errorLayout.error = context?.getString(R.string.hostname_invalid_text)
-                                errorLayout.setErrorIconDrawable(R.drawable.ic_error)
-                                view?.inputHostnameDescription?.visibility = View.INVISIBLE
-                            }
-                            else -> {
-                                errorLayout.error = null
-                                errorLayout.errorIconDrawable = null
-                                view?.inputHostnameDescription?.visibility = View.VISIBLE
-                            }
-                        }
-                    }
-                    R.id.inputLayoutUsername -> {
-                        when {
-                            TextUtils.isEmpty(inputText) -> {
-                                errorLayout.error = null
-                            }
-                        }
-                    }
-                    R.id.inputLayoutPassword -> {
-                        // password cannot be empty
-                        when {
-                            TextUtils.isEmpty(inputText) -> {
-                                errorLayout.setErrorTextColor(context?.getColorStateList(R.color.error_input_text))
-                                errorLayout.error = context?.getString(R.string.password_invalid_text)
-                                errorLayout.setErrorIconDrawable(R.drawable.ic_error)
-                                view?.btnPasswordToggle?.visibility = View.INVISIBLE
-                            }
-                            else -> {
-                                errorLayout.error = null
-                                errorLayout.errorIconDrawable = null
-                                view?.btnPasswordToggle?.visibility = View.VISIBLE
-                            }
-                        }
-                    }
-                    else -> {
-                        errorLayout.error = null
-                    }
-                }
+                view?.btnPasswordToggle?.visibility = View.VISIBLE
+                passwordInvalid = false
             }
         }
     }
